@@ -15,6 +15,7 @@
 #include <string.h>
 #include <math.h>
 
+#include "em_vcmp.h"
 #include "em_gpio.h"
 #include "em_adc.h"
 #include "em_int.h"
@@ -42,10 +43,22 @@ static uint16_t get_average_decagonect(void);
 static float volt_to_temperature_ect(float voltage);
 static inline float get_average_voltage(void);
 
+typedef struct
+{
+  uint32_t min;
+} VCMP_VoltageRange_TypeDef;
+
+
 /** @} (end addtogroup decagonect_driver) */
 
 
-/* pow() for float base and integer exponent */
+
+/* Others functions */
+
+/**
+ *  @brief
+ *    pow() for float base and integer exponent
+ */
 static inline float powfi(float x, int y)
 {
   unsigned int n = y;
@@ -59,6 +72,82 @@ static inline float powfi(float x, int y)
       if ((n >>= 1) == 0)
         return (y < 0 ? (z == 0.0f ? (float)HUGE_VAL : (float)(1) / z) : z);
     }
+}
+
+
+/**
+ *  @brief
+ *    Wait for comparator propagation delay
+ */
+void WaitForComparatorUpdate()
+{
+  /* Reenable VCMP to trigger a new warm-up cycle */
+  VCMP_Disable();
+  VCMP_Enable();
+  
+  /* Wait for VCMP warm-up */
+  while (!VCMP_Ready()) ;
+}
+
+
+/**
+ *  @brief
+ *    Measures the VDD voltage value for comparator propagation delay
+ *
+ *  @details
+ *    Return the VDD voltage value by measuring it with the comparator VCMP with a variable trigger
+ */
+float measuring_vdd(void) {
+
+  float trigger = 3.0;
+  float voltage_measured = 0.0;
+  bool finish = false;
+
+  while (finish == false){
+  	/* Declare VCMP Init struct */
+  	VCMP_Init_TypeDef vcmp =
+  	{
+	    false,                              /* Half bias current */
+	    7,                                  /* Bias current configuration */
+	    false,                              /* Enable interrupt for falling edge */
+	    false,                              /* Enable interrupt for rising edge */
+	    vcmpWarmTime256Cycles,              /* Warm-up time in clock cycles */
+	    vcmpHystNone,                       /* Hysteresis configuration */
+	    0,                                  /* Inactive comparator output value */
+	    false,                              /* Enable low power mode */
+	    VCMP_VoltageToLevel(trigger),       /* Trigger level */
+	    true                                /* Enable VCMP after configuration */
+  	};
+
+  	/* Declare VCMP voltage range struct */
+  	VCMP_VoltageRange_TypeDef voltageRange =
+  	{
+	    VCMP_VoltageToLevel(trigger),
+  	};
+
+  	/* Declare variables */
+  	bool voltageAboveTrigger;
+
+  	/* Initialize VCMP */
+  	CMU_ClockEnable(cmuClock_VCMP, true);
+  	VCMP_Init(&vcmp);
+
+  	/* Set and check lower limit */
+  	VCMP_TriggerSet(voltageRange.min);
+  	WaitForComparatorUpdate();
+  	voltageAboveTrigger = VCMP_VDDHigher();
+
+  	if (voltageAboveTrigger){
+	  	trigger += 0.01;
+	  	finish = false;
+  	}
+  	else{
+	  	voltage_measured = trigger;
+	  	finish = true;
+  	}
+  } // End while
+
+return voltage_measured;
 }
 
 
@@ -170,8 +259,7 @@ static float volt_to_temperature_ect(float voltage)
   float chi;
   float temperature;
   
-  float power = 3.5;
-  //float power = adcSingleInputVDDDiv3;
+  float power = measuring_vdd();
 
   chi=log((power/voltage)-1);
 
