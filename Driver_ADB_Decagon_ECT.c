@@ -92,7 +92,7 @@ void WaitForComparatorUpdate()
 
 /**
  *  @brief
- *    Measures the VDD voltage value for comparator propagation delay
+ *    Measures the VDD voltage value
  *
  *  @details
  *    Return the VDD voltage value by measuring it with the comparator VCMP with a variable trigger
@@ -256,12 +256,10 @@ static inline float get_average_voltage(void)
  */
 static float volt_to_temperature_ect(float voltage)
 {
-  float chi;
-  float temperature;
-  
-  float power = measuring_vdd();
 
-  chi=log((power/voltage)-1);
+  float temperature;  
+  float power = measuring_vdd();
+  float chi=log((power/voltage)-1);
 
   temperature = -0.08372f * powfi(chi, 3) + 1.532f * powfi(chi, 2)
     - 22.84f * chi + 25.02; 
