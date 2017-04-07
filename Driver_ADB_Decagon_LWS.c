@@ -43,6 +43,20 @@ static uint16_t get_average_decagonlws(void);
 static float volt_to_amount_water_lws(float voltage);
 static inline float get_average_voltage(void);
 
+/**
+ * Enumeration type. Humidity
+ * 
+ * 0 when dry sensor
+ * 1 when frost on the sensor
+ * 2 when dew
+ * 3 when rainfall
+ */
+enum humidity{
+	dry = 0,
+	frost,
+  	dew,
+  	rainfall,
+  };
 
 /** @} (end addtogroup decagonlws_driver) */
 
@@ -138,7 +152,7 @@ static inline float get_average_voltage(void)
 
 /**
  * @brief
- *    Get the ** from the voltage measured.
+ *    Get the amount of water from the voltage measured.
  *
  * @note
  *    Valid only for Decagon LWS sensor.
@@ -147,13 +161,28 @@ static inline float get_average_voltage(void)
  *    Measured voltage in volts
  *
  * @return
- *    ** corresponding to the voltage.
+ *    Amount of water corresponding to the voltage.
  */
 static float volt_to_amount_water_lws(float voltage)
 {
-  float amount_water;
+  enum humidity amount_water;
 
-  amount_water = 6.0024*(voltage/1000)+3.0478;
+  if (voltage < 0.450){
+  	// Dry threshold
+  	amount_water = dry;
+  }
+  else if ((voltage >= 0.450) && (voltage < 0.500)){
+  	// Frost threshold
+  	amount_water = frost;
+  }
+  else if((voltage >= 0.500) && (voltage < 0.700)){
+  	// Dew threshold
+  	amount_water = dew;
+  }
+  else{
+  	// Rainfall threshold
+  	amount_water = rainfall;
+  }
   
   return amount_water;
 }
