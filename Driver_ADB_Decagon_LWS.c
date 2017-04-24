@@ -167,15 +167,15 @@ static float volt_to_amount_water_lws(float voltage)
 {
   enum humidity amount_water;
 
-  if (voltage < 0.450){
+  if (voltage <= 0.445){
   	// Dry threshold
   	amount_water = dry;
   }
-  else if ((voltage >= 0.450) && (voltage < 0.500)){
+  else if ((voltage > 0.445) && (voltage <= 0.470)){
   	// Frost threshold
   	amount_water = frost;
   }
-  else if((voltage >= 0.500) && (voltage < 0.700)){
+  else if((voltage > 0.470) && (voltage < 0.700)){
   	// Dew threshold
   	amount_water = dew;
   }
